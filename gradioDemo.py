@@ -4,10 +4,11 @@ from pdfImage import *
 
 done = False
 engine = None
+tmp_dir = None
 
 
 def main_interface(file, dpi, skip_page_front, skip_page_back, skip_block, lang, query):
-    global done, engine
+    global done, engine, tmp_dir
     if not done:
         # Load PDF, Convert to Image, Description, and Index
         tmp_dir = load_pdf(file.name, dpi, skip_page_front, skip_page_back, skip_block, lang)
