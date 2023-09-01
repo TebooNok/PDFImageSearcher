@@ -1,5 +1,5 @@
 # PDF Image Extractor with Search
-
+### [DEMO at: PDF Image Searcher on Hugging Face](https://huggingface.co/spaces/Teboo/pdfImgSearcher)
 This project is a Python-based tool to extract images from a given PDF file and index the surrounding context of each image for subsequent search operations. Users can query the context in natural language, and the search results will present the related images. This tool supports both English and Chinese languages. For Chinese tokenization, the `jieba` library is used.
 
 ## Features
