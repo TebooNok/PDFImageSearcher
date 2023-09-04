@@ -10,6 +10,10 @@ import os
 import shutil
 import tempfile
 
+LOGO_WIDTH = 398
+LOGO_HEIGHT = 137
+
+
 class ChineseTokenizer(Tokenizer):
     def __call__(self, value, positions=False, chars=False,
                  keeporiginal=False, removestops=True,
@@ -77,6 +81,9 @@ def load_pdf(file, dpi=300, skip_page_front=0, skip_page_back=1, skip_block=5, l
             if 'image' in block:
                 # try:
                     bbox = block['bbox']
+                    # skip image that width=398 and hight=137 -> Typically LOGO
+                    if (bbox[2] - bbox[0])*scale - LOGO_WIDTH <= 10 and (bbox[3] - bbox[1])*scale - LOGO_HEIGHT <= 10:
+                        continue
                     # Scale the bbox coordinates
                     cropped = page_im.crop([int(i * scale) for i in bbox])
                     number = block['number']
