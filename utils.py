@@ -1,88 +1,102 @@
-def get_text_around_image(blocks, image_index, lang='CN', word_count=50):
-    # print(len(blocks))
-    # print(image_index)
-    # Initialize text accumulator and word counter
-    text_content = ''
+def get_adjacent_lines(blocks, block_index):
+    """
+    Returns two lists: the lines of text before and after the block at block_index.
+    Each list contains lines in order from closest to furthest from the block.
+    """
+    def is_same_line(origin1, origin2):
+        # Adjust this threshold if needed
+        THRESHOLD = 10
+        return abs(origin1[1] - origin2[1]) < THRESHOLD
+
+    def extract_spans_from_blocks(target_blocks):
+        spans = []
+        for block in target_blocks:
+            if 'lines' in block:
+                for line in block['lines']:
+                    for span in line['spans']:
+                        spans.append(span)
+        return spans
+
+    def merge_spans_to_lines(spans):
+        if not spans:
+            return []
+
+        lines = []
+        current_line = spans[0]['text']
+        current_origin = spans[0]['origin']
+
+        for span in spans[1:]:
+            if is_same_line(span['origin'], current_origin):
+                current_line += " " + span['text']
+            else:
+                lines.append(current_line.strip())
+                current_line = span['text']
+                current_origin = span['origin']
+
+        lines.append(current_line.strip())
+        return lines
+
+    spans_before = extract_spans_from_blocks(blocks[:block_index])
+    spans_after = extract_spans_from_blocks(blocks[block_index + 1:])
+
+    lines_before = merge_spans_to_lines(spans_before)
+    lines_after = merge_spans_to_lines(spans_after)
+
+    return lines_before, lines_after
+
+
+def get_text_around_image(blocks, image_index,  lang='CN', word_count=50):
+    before_lines, after_lines = get_adjacent_lines(blocks, image_index)
+
+    # print(before_lines)
+    # print(after_lines)
+    text_content = ""
     counter = word_count
 
-    # Process blocks before the image
-    for block in reversed(blocks[:image_index]):
-        if 'lines' in block:  # Check if it's a text block
-            for line in reversed(block['lines']):
-                for span in reversed(line['spans']):
-                    text = span['text']
-                    # print(text)
-                    text_content = text + '\n' + text_content
-                    if lang == 'CN':
-                        counter -= len(text)
-                    else:
-                        words = text.split(' ')
-                        counter -= len(words)
-                    if counter <= 0:
-                        break
-                if counter <= 0:
-                    break
-            if counter <= 0:
-                break
-    # print(text_content)
-    counter = word_count  # Reset the word counter for blocks after the image
+    # Process lines before the image
+    for line in reversed(before_lines):
+        text_content = line + '\n' + text_content
+        if lang == 'CN':
+            counter -= len(line)
+        else:
+            counter -= len(line.split(' '))
+        if counter <= 0:
+            break
 
-    # Process blocks after the image
-    for block in blocks[image_index+1:]:
-        if 'lines' in block:  # Check if it's a text block
-            for line in block['lines']:
-                for span in line['spans']:
-                    text = span['text']
-                    text_content += text + '\n'
-                    if lang == 'CN':
-                        counter -= len(text)
-                    else:
-                        words = text.split(' ')
-                        counter -= len(words)
-                    if counter <= 0:
-                        break
-                if counter <= 0:
-                    break
-            if counter <= 0:
-                break
-    # print(text_content)
-    return text_content
+    # Reset the word counter for lines after the image
+    counter = word_count
+
+    # Process lines after the image
+    for line in after_lines:
+        text_content += line + '\n'
+        if lang == 'CN':
+            counter -= len(line)
+        else:
+            counter -= len(line.split(' '))
+        if counter <= 0:
+            break
+
+    return text_content.strip()
 
 
-# search the closest line above and below，check whether it contains 'figure'.
-# Set this line as title of image if it does. Line below has higher priority.
 def get_title_of_image(blocks, image_index, lang='CN'):
-    # Initialize caption holder
-    caption = None
+    before_lines, after_lines = get_adjacent_lines(blocks, image_index)
 
-    # Process blocks before the image to find a potential caption
-    for block in reversed(blocks[:image_index]):
-        if 'lines' in block:  # Check if it's a text block
-            for line in reversed(block['lines']):
-                for span in reversed(line['spans']):
-                    text = span['text']
-                    # If the text contains "图", assume it's a caption
-                    if '图' in text or 'figure' in text.lower():
-                        caption = text
-                        break  # stop when found the first line that contains "图"
-                if caption is not None:
-                    break  # stop when found the first line that contains "图"
-            if caption is not None:
-                break  # stop when found the first line that contains "图"
+    # Search for a title in the lines before the image
+    title = None
+    for line in reversed(before_lines):
+        if lang == 'CN' and '图' in line:
+            title = f"title: {line}"
+            break
+        elif 'figure' in line.lower():
+            title = f"title: {line}"
+            break
 
-    # Process blocks after the image to update the caption (if any)
-    for block in blocks[image_index+1:]:
-        if 'lines' in block:  # Check if it's a text block
-            for line in block['lines']:
-                for span in line['spans']:
-                    text = span['text']
-                    # If the text contains "图", assume it's a caption
-                    if '图' in text or 'figure' in text.lower():
-                        caption = text
-                        break  # stop when found the first line that contains "图"
-                if caption is not None:
-                    break  # stop when found the first line that contains "图"
-            if caption is not None:
-                break  # stop when found the first line that contains "图"
+    # Search for a title in the lines after the image
+    for line in after_lines:
+        if lang == 'CN' and '图 ' in line:
+            return f"title: {line}"
+        elif 'figure' in line.lower():
+            return f"title: {line}"
 
-    return f"title: {caption}" if caption else "title: Not Found"
+    return title if title else "title: Not Found"
