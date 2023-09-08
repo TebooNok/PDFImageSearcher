@@ -245,8 +245,7 @@ def return_image(file, results_list, tmp_dir):
 # file = 'CA-IS3086 datasheet_cn.pdf'
 # temp_image_dir = load_pdf(file, lang='CN')
 # ix, temp_index_dir = build_index(file, temp_image_dir)
-# results_list = search(ix, """title: 图 7-1输入等效电路输入等效电路
-# CA-IS3086W, CA-IS3086WE 上海川土微电子有限公司上海川土微电子有限公司 输入等效电路输入等效电路 图 7-1输入等效电路输入等效电路 8 功能描述功能描述 简述简述 CA-IS3086 是用于 RS-485通信的全双工收发器，包含一个驱动器和接收器。具有失效安全，过流保护和过热保护""", lang='CN', k=10)
+# results_list = search(ix, "波形", lang='CN', k=10)
 # ret_img = return_image(file, results_list, temp_image_dir)
 # print('title: ' + ret_img[0])
 # ret_img[1].show()
