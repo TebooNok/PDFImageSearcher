@@ -8,10 +8,13 @@ from whoosh.fields import *
 from whoosh.qparser import QueryParser
 import os
 import shutil
-import tempfile
+# import tempfile
 
 LOGO_WIDTH = 398
 LOGO_HEIGHT = 137
+
+ix = None
+writer = None
 
 
 class ChineseTokenizer(Tokenizer):
@@ -49,7 +52,7 @@ def load_pdf(file, dpi=300, skip_page_front=0, skip_page_back=1, skip_block=5, l
     :return:
     """
 
-    doc = fitz.open(file)
+    doc = fitz.open('using_pdfs/' + file)
 
     # load pages
     pages = []
@@ -63,14 +66,14 @@ def load_pdf(file, dpi=300, skip_page_front=0, skip_page_back=1, skip_block=5, l
     matrix = fitz.Matrix(scale, scale)
     skip_block = int(skip_block)
 
-    # base_name = os.path.basename(file).split('.')[0]
-    # path_name = f'images{base_name}'
-    # if os.path.exists(path_name):
-    #     shutil.rmtree(path_name)
-    # os.mkdir(path_name)
-    #
-    # temp_image_dir = path_name
-    temp_image_dir = tempfile.mkdtemp(prefix='images_')
+    base_name = os.path.basename(file).split('.')[0]
+    path_name = f'images/{base_name}'
+    if os.path.exists(path_name):
+        shutil.rmtree(path_name)
+    os.mkdir(path_name)
+
+    temp_image_dir = path_name
+    # temp_image_dir = tempfile.mkdtemp(prefix='images_')
 
     for page in pages[int(skip_page_front):-int(skip_page_back)]:  # skip final page
 
@@ -92,7 +95,7 @@ def load_pdf(file, dpi=300, skip_page_front=0, skip_page_back=1, skip_block=5, l
                     cropped = page_im.crop([int(i * scale) for i in bbox])
                     number = block['number']
 
-                    file_name = temp_image_dir + f'/image_{page.number}_{number}'
+                    file_name = temp_image_dir + f'/{base_name}_imgbmp_{page.number}_{number}'
                     image_name = file_name + '.png'
                     # print(image_name)
                     cropped.save(image_name)
@@ -102,7 +105,7 @@ def load_pdf(file, dpi=300, skip_page_front=0, skip_page_back=1, skip_block=5, l
                     # print(text_content[:30])
                     # print(title)
                     with open(f'{file_name}.txt', 'w', encoding='utf-8') as text_file:
-                        text_file.write(title + '\n' + text_content.replace('\n', ' '))
+                        text_file.write(title + '\n' + text_content.replace('\n', ' ')+ f'\nbase name:{base_name}')
 
                     saved.append((file_name, [int(i * scale) for i in bbox]))
                 # except:
@@ -159,7 +162,7 @@ def load_pdf(file, dpi=300, skip_page_front=0, skip_page_back=1, skip_block=5, l
                     break
 
             cropped_img = page_im.crop((int(x1), int(y1), int(x2), int(y2)))
-            file_name = temp_image_dir + f'/svg_image_{page.number}_{block_id}'
+            file_name = temp_image_dir + f'/{base_name}_imgsvg_{page.number}_{block_id}'
             image_name = file_name + '.png'
             cropped_img.save(image_name)
 
@@ -167,33 +170,40 @@ def load_pdf(file, dpi=300, skip_page_front=0, skip_page_back=1, skip_block=5, l
             text_content = get_svg_text_around_image(svg_blocks, block_id, lang)
             title = get_svg_title_around_image(svg_blocks, block_id, lang)
             with open(f'{file_name}.txt', 'w', encoding='utf-8') as text_file:
-                text_file.write(title + '\n' + text_content.replace('\n', ' '))
+                text_file.write(title + '\n' + text_content.replace('\n', ' ') + f'\nbase name:{base_name}')
 
     return temp_image_dir
 
 
 def build_index(file, tmp_dir, lang='CN'):
     # Define the schema for the index
-    if lang=='CN':
+    if lang == 'CN':
         schema = Schema(file_name=ID(stored=True), content=TEXT(analyzer=ChineseAnalyzer(), stored=True))
     else:
         schema = Schema(file_name=ID(stored=True), content=TEXT(stored=True))
 
-    # base_name = os.path.basename(file).split('.')[0]
-    # path_name = f'{base_name}'
-    # index_path = path_name + '_index_dir'
-    # # Create an index in a directory
+    base_name = os.path.basename(file).split('.')[0]
+    path_name = f'{base_name}'
+    # index_path = 'indexes/' + path_name + '_index_dir'
+    index_path = 'indexes/'
+    # Create an index in a directory
     # if os.path.exists(index_path):
     #     shutil.rmtree(index_path)
     # os.mkdir(index_path)
-    temp_index_dir = tempfile.mkdtemp(prefix='index_')
+    temp_index_dir = index_path
+    # temp_index_dir = tempfile.mkdtemp(prefix='index_')
 
-    ix = create_in(temp_index_dir, schema)
+    global ix
+    if ix is None:
+        ix = create_in(temp_index_dir, schema)
+    global writer
+    if writer is None:
+        writer = ix.writer()
 
     # Add documents to the index
     # base_name = os.path.basename(file).split('.')[0]
     # image_path = f'images{base_name}'
-    writer = ix.writer()
+    # writer = ix.writer()
     for file in os.listdir(tmp_dir):
         if file.endswith('.txt'):
             file_path = os.path.join(tmp_dir, file)
@@ -204,7 +214,7 @@ def build_index(file, tmp_dir, lang='CN'):
             # print(content)
             # print("==========")
 
-    writer.commit()
+    # writer.commit()
     return ix, temp_index_dir
 
 
@@ -224,7 +234,7 @@ def search(ix, query, lang='CN', k=10):
         results = searcher.search(myquery, limit=k)
 
         # Extract and return the file names and descriptions of the top-k hits
-        results_list = [(hit['file_name'], hit.highlights("content"), hit) for hit in results]
+        results_list = [(hit['file_name'], hit['content'], hit.score) for hit in results]
 
     return results_list
 
@@ -250,3 +260,25 @@ def return_image(file, results_list, tmp_dir):
 # print('title: ' + ret_img[0])
 # ret_img[1].show()
 
+# print(os.listdir('using_pdfs'))
+
+# for file in os.listdir('using_pdfs'):
+#     tmd_dir = load_pdf(file)
+#     ix, tmp_index_dir = build_index('using_pdfs/' + file, tmd_dir)
+#
+# writer.commit()
+# from whoosh.index import open_dir
+# search_ix = open_dir('indexes')
+# query = "IF-428x接收端阈值"
+# results = search(search_ix, query, lang='CN', k=10)
+# for result in results:
+#     print(result)
+#
+# from PIL import Image
+#
+# for result in results:
+#     image_name = result[0]
+#     base_name = image_name.split('_img')[0]
+#     img = Image.open('images/' + base_name + '/' + image_name + '.png')
+#     image_title = result[1].split('\n')[0].split(':')[1]
+#     img.show(title=image_title)

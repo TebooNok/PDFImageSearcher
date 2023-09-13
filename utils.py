@@ -101,6 +101,8 @@ def get_title_of_image(blocks, image_index, lang='CN'):
         elif 'figure' in line.lower():
             return f"title: {line}"
 
+    if before_lines:
+        title = before_lines[-1]
     return title if title else "title: Not Found"
 
 
