@@ -52,7 +52,12 @@ def load_pdf(file, dpi=300, skip_page_front=0, skip_page_back=1, skip_block=5, l
     :return:
     """
 
-    doc = fitz.open('using_pdfs/' + file)
+    if file.__contains__('\\gradio\\'):
+        print('gradio file')
+        doc = fitz.open(file)
+    else:
+        print('local file')
+        doc = fitz.open('using_pdfs/' + file)
 
     # load pages
     pages = []
@@ -172,6 +177,7 @@ def load_pdf(file, dpi=300, skip_page_front=0, skip_page_back=1, skip_block=5, l
             with open(f'{file_name}.txt', 'w', encoding='utf-8') as text_file:
                 text_file.write(title + '\n' + text_content.replace('\n', ' ') + f'\nbase name:{base_name}')
 
+    print(temp_image_dir)
     return temp_image_dir
 
 
@@ -210,11 +216,11 @@ def build_index(file, tmp_dir, lang='CN'):
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             writer.add_document(file_name=file[:-4], content=content)
-            # print('==========')
-            # print(content)
-            # print("==========")
+            print('==========')
+            print(content)
+            print("==========")
 
-    # writer.commit()
+    writer.commit()
     return ix, temp_index_dir
 
 
@@ -245,7 +251,7 @@ def return_image(file, results_list, tmp_dir):
     titles = []
     images = []
     for result in results_list:
-        title = result[2].fields()['content'].split('\n')[0].split(':')[1]
+        title = result[1].split('\n')[0].split(':')[-1]
         titles.append(title)
         images.append(Image.open(tmp_dir + '/' + result[0] + '.png'))
     return titles[0], images[0]
@@ -262,11 +268,13 @@ def return_image(file, results_list, tmp_dir):
 
 # print(os.listdir('using_pdfs'))
 
-# for file in os.listdir('using_pdfs'):
+# import tqdm
+# for file in tqdm.tqdm(os.listdir('using_pdfs')):
 #     tmd_dir = load_pdf(file)
 #     ix, tmp_index_dir = build_index('using_pdfs/' + file, tmd_dir)
-#
+# #
 # writer.commit()
+
 # from whoosh.index import open_dir
 # search_ix = open_dir('indexes')
 # query = "IF-428x接收端阈值"

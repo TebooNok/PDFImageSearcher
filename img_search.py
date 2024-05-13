@@ -49,12 +49,12 @@ def search(query, lang='CN', k=10):
 
         images = []
         for result in results_list:
-            # print(result)
+            print(result)
             image_name = result[0]
             base_name = image_name.split('_img')[0]
             image_full_path = 'images/' + base_name + '/' + image_name + '.png' # 这个代码就是构造图片路径的
             img = Image.open(image_full_path)
-            image_title = result[1].split('\n')[0].split(':')[1]
+            image_title = result[1].split('\n')[-1].split(':')[1]
             # img.show(title=image_title)
             images.append((img, image_title, result[2]))
 
@@ -62,6 +62,7 @@ def search(query, lang='CN', k=10):
 
 
 jieba.cut("") # 用于预加载中文分词词典，建议提前运行这段命令
-results = search("IF-428x接收端阈值")
+# results = search("IF-428x接收端阈值")
+results = search("简化结构图")
 for result in results:
     print(result[1], result[2]) # result[0] 是图片的 PIL.Image 对象， result[1]是title，2是相似度打分

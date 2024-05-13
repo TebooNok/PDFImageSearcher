@@ -126,8 +126,8 @@ def parse_page_svg(svg, page_id):
     root = ET.fromstring(svg)
 
     # 获取页面大小
-    width = int(root.get('width').replace('pt', ''))
-    height = int(root.get('height').replace('pt', ''))
+    width = int(float(root.get('width').replace('pt', '')))
+    height = int(float(root.get('height').replace('pt', '')))
 
     # 存储clipPaths
     clips = {}
