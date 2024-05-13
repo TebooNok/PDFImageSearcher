@@ -52,7 +52,7 @@ def load_pdf(file, dpi=300, skip_page_front=0, skip_page_back=1, skip_block=5, l
     :return:
     """
 
-    if file.__contains__('\\gradio\\'):
+    if file.__contains__('\\gradio\\') or file.__contains__('/gradio/'):
         print('gradio file')
         doc = fitz.open(file)
     else:
